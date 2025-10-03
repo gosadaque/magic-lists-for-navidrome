@@ -187,6 +187,33 @@ class NavidromeClient:
             raise Exception(f"HTTP error from Navidrome: {e.response.status_code}")
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
+
+    async def get_most_played_artists(self, top_n: int = 5):
+        """Get the most played artists by total play count"""
+    
+        # Get all artists
+        artists = await client.get_artists()
+    
+        artist_play_counts = []
+    
+        for artist in artists:
+            # Get all tracks for this artist
+            tracks = await client.get_tracks_by_artist(artist["id"])
+        
+            # Sum up play counts
+            total_plays = sum(track["play_count"] for track in tracks)
+        
+            artist_play_counts.append({
+                "name": artist["name"],
+                "id": artist["id"],
+                "total_plays": total_plays,
+                "track_count": len(tracks)
+            })
+    
+        # Sort by play count (descending)
+        artist_play_counts.sort(key=lambda x: x["total_plays"], reverse=True)
+    
+        return artist_play_counts[:top_n]
     
     async def create_playlist(self, name: str, track_ids: List[str]) -> str:
         """Create a new playlist in Navidrome using Subsonic API
