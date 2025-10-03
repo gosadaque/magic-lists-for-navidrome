@@ -149,7 +149,7 @@ class NavidromeClient:
             
             artist_data = subsonic_response.get("artist", {})
             tracks_list = []
-            
+                
             # Get tracks from albums
             for album in artist_data.get("album", []):
                 album_id = album.get("id")
@@ -188,32 +188,45 @@ class NavidromeClient:
         except Exception as e:
             raise Exception(f"Unexpected error fetching tracks for artist {artist_id}: {e}")
 
-    async def get_most_played_artists(self, top_n: int = 5):
-        """Get the most played artists by total play count"""
+    async def get_most_played_artists(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Fetch artists ranked by total play count across all their tracks
     
-        # Get all artists
-        artists = await client.get_artists()
-    
-        artist_play_counts = []
-    
-        for artist in artists:
-            # Get all tracks for this artist
-            tracks = await client.get_tracks_by_artist(artist["id"])
+        Args:
+            limit: Maximum number of artists to return (default: 10)
         
-            # Sum up play counts
-            total_plays = sum(track["play_count"] for track in tracks)
+        Returns:
+            List of artists with format: {id, name, total_plays, track_count}
+            Sorted by total_plays in descending order
+            """
+        try:
+            await self._ensure_authenticated()
         
-            artist_play_counts.append({
-                "name": artist["name"],
-                "id": artist["id"],
-                "total_plays": total_plays,
-                "track_count": len(tracks)
-            })
-    
-        # Sort by play count (descending)
-        artist_play_counts.sort(key=lambda x: x["total_plays"], reverse=True)
-    
-        return artist_play_counts[:top_n]
+            # Get all artists
+            artists = await self.get_artists()
+        
+            artist_play_counts = []
+        
+            for artist in artists:
+                # Get all tracks for this artist
+                tracks = await self.get_tracks_by_artist(artist["id"])
+            
+                # Sum up play counts
+                total_plays = sum(track["play_count"] for track in tracks)
+            
+                artist_play_counts.append({
+                    "id": artist["id"],
+                    "name": artist["name"],
+                    "total_plays": total_plays,
+                    "track_count": len(tracks)
+                })
+        
+            # Sort by play count (descending)
+            artist_play_counts.sort(key=lambda x: x["total_plays"], reverse=True)
+        
+            return artist_play_counts[:limit]
+            
+        except Exception as e:
+            raise Exception(f"Unexpected error fetching most played artists: {e}")
     
     async def create_playlist(self, name: str, track_ids: List[str]) -> str:
         """Create a new playlist in Navidrome using Subsonic API
